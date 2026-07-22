@@ -1,0 +1,11 @@
+cluster,age,balance,duration,campaign,pdays,previous,anomaly_score,Classification,Reason
+1,65,2352,354,3,188,13,-0.1134,Potential Risk Signal,Nasabah telah dihubungi sebelumnya sebanyak 13 kali. Frekuensi kontak yang sangat tinggi menunjukkan pola pemasaran yang tidak biasa dan perlu dievaluasi efektivitasnya.
+1,27,6791,174,2,229,28,-0.1123,Potential Risk Signal,Nasabah telah dihubungi sebelumnya sebanyak 28 kali. Frekuensi kontak yang sangat tinggi menunjukkan pola pemasaran yang tidak biasa dan perlu dievaluasi efektivitasnya.
+1,57,2986,1563,1,166,3,-0.1052,Needs Further Investigation,Durasi percakapan jauh lebih panjang dibandingkan mayoritas pelanggan. Kondisi ini menunjukkan perilaku pelanggan yang tidak umum sehingga perlu dianalisis lebih lanjut.
+1,43,7702,108,7,102,3,-0.1036,Potential Risk Signal,Nasabah telah dihubungi sebanyak 7 kali pada kampanye saat ini. Intensitas kampanye yang tinggi dapat mengindikasikan strategi pemasaran yang kurang efektif.
+1,36,2646,169,1,182,10,-0.1019,Potential Risk Signal,Nasabah telah dihubungi sebelumnya sebanyak 10 kali. Frekuensi kontak yang sangat tinggi menunjukkan pola pemasaran yang tidak biasa dan perlu dievaluasi efektivitasnya.
+1,45,4831,852,3,182,11,-0.1003,Potential Risk Signal,Nasabah telah dihubungi sebelumnya sebanyak 11 kali. Frekuensi kontak yang sangat tinggi menunjukkan pola pemasaran yang tidak biasa dan perlu dievaluasi efektivitasnya.
+2,43,11891,821,5,242,1,-0.0989,Rare Legitimate Case,"Saldo rekening jauh lebih tinggi dibandingkan mayoritas pelanggan sehingga kemungkinan merupakan nasabah bernilai tinggi (high-value customer), bukan kesalahan data."
+1,64,2352,153,2,182,11,-0.0981,Potential Risk Signal,Nasabah telah dihubungi sebelumnya sebanyak 11 kali. Frekuensi kontak yang sangat tinggi menunjukkan pola pemasaran yang tidak biasa dan perlu dievaluasi efektivitasnya.
+1,58,-382,398,4,189,12,-0.0938,Potential Risk Signal,Nasabah memiliki saldo negatif tetapi telah dihubungi berkali-kali. Hal ini mengindikasikan adanya upaya pemasaran yang intensif terhadap pelanggan dengan potensi konversi yang rendah.
+2,42,11008,822,6,405,1,-0.0934,Rare Legitimate Case,"Saldo rekening jauh lebih tinggi dibandingkan mayoritas pelanggan sehingga kemungkinan merupakan nasabah bernilai tinggi (high-value customer), bukan kesalahan data."
