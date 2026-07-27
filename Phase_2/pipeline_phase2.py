@@ -9,19 +9,38 @@ diorkestrasi dengan Prefect.
 
 Ketergantungan (dependency):
     Phase 2 butuh output Phase 1: `X_selected.csv` dan `raw_data.csv`
-    (di ../Phase_1/output/). Jika file tersebut belum ada, pipeline ini
-    akan MENJALANKAN Phase 1 secara otomatis terlebih dahulu, sehingga
-    Phase 2 selalu bisa dijalankan sendirian tanpa perlu langkah manual.
+    (di ../Phase_1/output/).
+
+    CATATAN PENTING soal sumber data "raw_data":
+    Di notebook `Phase_2_Segmentation_via_Clustering.ipynb` (cell 1), baris
+    yang benar-benar dieksekusi adalah
+    `raw_data = pd.read_csv("../Phase_1/bank_marketing_clean.csv")`,
+    sementara baris `# raw_data = pd.read_csv("../Phase_1/raw_data.csv")`
+    di-comment. TAPI ini terbukti sisa eksperimen/bug, bukan alur yang
+    sebenarnya dipakai: notebook Phase 4 (cell 3, 21, 28) memakai kolom
+    mentah asli dari "raw_data" seperti raw_data['age'], raw_data['balance'],
+    raw_data['job'], raw_data['housing']=="yes", raw_data['y']=="yes" — semua
+    ini MUSTAHIL ada kalau sumbernya bank_marketing_clean.csv, karena di sana
+    age/balance/duration sudah di-drop diganti kolom bin, job/marital sudah
+    di-one-hot, dan y/housing/loan sudah di-encode jadi 0/1. Karena itu,
+    pipeline ini memakai `raw_data.csv` (data mentah asli) sebagai sumber,
+    supaya kompatibel dengan Phase 3 & Phase 4 seperti notebook aslinya.
+
+    Jika `raw_data.csv` / `X_selected.csv` belum ada, pipeline ini akan
+    MENJALANKAN Phase 1 secara otomatis terlebih dahulu, sehingga Phase 2
+    selalu bisa dijalankan sendirian tanpa perlu langkah manual.
 
 Cara menjalankan (dari dalam folder Phase_2):
     pip install -r ../requirements.txt
     python pipeline_phase2.py
 
 Output yang dihasilkan (folder ./output):
-    - raw_data_with_clusters.csv -> raw_data + kolom 'cluster' (label KMeans),
-                                     dipakai Phase 4 untuk cross-reference
+    - raw_data_with_clusters.csv -> raw_data (mentah, kolom asli) + kolom
+                                     'cluster' (label KMeans), dipakai
+                                     Phase 4 untuk cross-reference
     - cluster_profile.csv        -> rata-rata tiap fitur per cluster
     - figures/*.png              -> elbow method, silhouette, heatmap profil,
+                                     k-distance graph (untuk eps DBSCAN),
                                      dendrogram (ward/complete/average)
 """
 
@@ -37,9 +56,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from kneed import KneeLocator
 from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.metrics import silhouette_score
+from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
 
 import os
@@ -59,8 +80,14 @@ PHASE1_DIR = SCRIPT_DIR.parent / "Phase_1"
 PHASE1_OUTPUT_DIR = PHASE1_DIR / "output"
 
 OPTIMAL_K = 4
-DBSCAN_EPS = 0.5
+# Nilai eps ini di notebook ditentukan lewat K-Distance Graph + KneeLocator
+# (lihat task `find_dbscan_eps`), namun pada akhirnya di-hardcode langsung
+# ke DBSCAN sebagai 8.1 (bukan variabel hasil KneeLocator). Kita replikasi
+# perilaku itu persis: eps dihitung & di-log untuk transparansi, tapi nilai
+# final yang dipakai tetap konstanta ini, sama seperti notebook aslinya.
+DBSCAN_EPS = 8.1
 DBSCAN_MIN_SAMPLES = 5
+DBSCAN_KNN_NEIGHBORS = 5
 DENDROGRAM_SAMPLE_SIZE = 3000
 RANDOM_STATE = 42
 
@@ -72,7 +99,10 @@ RANDOM_STATE = 42
 def ensure_phase1_outputs() -> None:
     """Pastikan output Phase 1 tersedia; jalankan Phase 1 jika belum ada."""
     logger = get_run_logger()
-    required = [PHASE1_OUTPUT_DIR / "X_selected.csv", PHASE1_OUTPUT_DIR / "raw_data.csv"]
+    required = [
+        PHASE1_OUTPUT_DIR / "X_selected.csv",
+        PHASE1_OUTPUT_DIR / "raw_data.csv",
+    ]
 
     if all(p.exists() for p in required):
         logger.info("Output Phase 1 sudah tersedia, lanjut ke Phase 2.")
@@ -97,6 +127,9 @@ def ensure_phase1_outputs() -> None:
 
 @task(log_prints=True)
 def load_inputs() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Muat X_selected (fitur terpilih, untuk fitting KMeans/DBSCAN) &
+    raw_data (data mentah asli, dipakai untuk menempelkan label cluster
+    supaya Phase 3 & Phase 4 tetap bisa membaca kolom aslinya)."""
     logger = get_run_logger()
     X_selected = pd.read_csv(PHASE1_OUTPUT_DIR / "X_selected.csv")
     raw_data = pd.read_csv(PHASE1_OUTPUT_DIR / "raw_data.csv")
@@ -169,6 +202,33 @@ def plot_cluster_heatmap(cluster_profile: pd.DataFrame) -> None:
 
 
 @task(log_prints=True)
+def find_dbscan_eps(X_selected: pd.DataFrame) -> float:
+    """K-Distance Graph + KneeLocator untuk menentukan eps DBSCAN (cell 11-12 notebook)."""
+    logger = get_run_logger()
+    neighbors = NearestNeighbors(n_neighbors=DBSCAN_KNN_NEIGHBORS)
+    neighbors_fit = neighbors.fit(X_selected)
+    distances, _ = neighbors_fit.kneighbors(X_selected)
+    distances = np.sort(distances[:, DBSCAN_KNN_NEIGHBORS - 1])
+
+    plt.figure()
+    plt.plot(distances)
+    plt.ylabel("5-NN Distance")
+    plt.title("K-Distance Graph untuk menentukan eps")
+    plt.savefig(FIGURES_DIR / "03_k_distance_graph.png", dpi=150)
+    plt.close()
+
+    kneedle = KneeLocator(
+        range(len(distances)), distances, curve="convex", direction="increasing"
+    )
+    eps_detected = float(distances[kneedle.knee])
+    logger.info(f"Nilai eps hasil KneeLocator = {eps_detected:.4f}")
+    logger.info(
+        f"Eps yang benar-benar dipakai di DBSCAN (sesuai notebook, hardcoded) = {DBSCAN_EPS}"
+    )
+    return eps_detected
+
+
+@task(log_prints=True)
 def run_dbscan(X_selected: pd.DataFrame, df_cluster: pd.DataFrame) -> pd.DataFrame:
     logger = get_run_logger()
     dbscan = DBSCAN(eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES)
@@ -196,7 +256,7 @@ def run_hierarchical_dendrograms(X_selected: pd.DataFrame) -> None:
         dendrogram(linked)
         plt.title(f"Dendrogram - {method}")
         plt.tight_layout()
-        plt.savefig(FIGURES_DIR / f"03_dendrogram_{method}.png", dpi=150)
+        plt.savefig(FIGURES_DIR / f"04_dendrogram_{method}.png", dpi=150)
         plt.close()
     logger.info(f"Dendrogram dibuat dari sampel {sample_size} baris untuk metode: {methods}")
 
@@ -227,6 +287,7 @@ def phase2_flow(k: int = OPTIMAL_K) -> Path:
     df_cluster, raw_data_with_clusters, cluster_profile = run_kmeans(X_selected, raw_data, k)
 
     plot_cluster_heatmap(cluster_profile)
+    find_dbscan_eps(X_selected)
     df_cluster = run_dbscan(X_selected, df_cluster)
     run_hierarchical_dendrograms(X_selected)
 

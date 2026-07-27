@@ -88,6 +88,13 @@ def explore_data(data: pd.DataFrame) -> None:
     """Replikasi seluruh eksplorasi data (EDA) di notebook Phase 1."""
     logger = get_run_logger()
     logger.info(f"Jumlah baris & kolom: {data.shape}")
+
+    # Ringkasan tipe data & non-null count per kolom (setara data.info())
+    dtypes_report = pd.DataFrame(
+        {"dtype": data.dtypes, "non_null_count": data.notnull().sum()}
+    )
+    logger.info(f"Info tipe data & non-null count per kolom:\n{dtypes_report}")
+
     logger.info(f"Jumlah nilai unik per kolom:\n{data.nunique()}")
     logger.info(f"Distribusi kolom 'contact':\n{data['contact'].value_counts()}")
     logger.info(f"Distribusi kolom 'poutcome':\n{data['poutcome'].value_counts()}")
@@ -108,7 +115,6 @@ def explore_data(data: pd.DataFrame) -> None:
     plt.close()
 
     # Boxplot kolom numerik (deteksi outlier awal)
-    plt.figure()
     data[numeric_cols].boxplot(figsize=(12, 6))
     plt.xticks(rotation=45)
     plt.tight_layout()
@@ -134,6 +140,7 @@ def clean_and_rename(data: pd.DataFrame) -> pd.DataFrame:
     logger = get_run_logger()
     df = data.rename(columns={"y": "is_subscribed", "default": "credit_default"})
     df["job"] = df["job"].replace("admin.", "admin")
+    logger.info(f"Kategori unik kolom 'job' setelah standardisasi: {df['job'].unique().tolist()}")
     n_duplicates = df.duplicated().sum()
     logger.info(f"Jumlah baris duplikat: {n_duplicates}")
     return df
@@ -142,10 +149,12 @@ def clean_and_rename(data: pd.DataFrame) -> pd.DataFrame:
 @task(log_prints=True)
 def scale_numeric(df: pd.DataFrame) -> pd.DataFrame:
     """RobustScaler pada seluruh kolom numerik (tahan terhadap outlier)."""
+    logger = get_run_logger()
     df = df.copy()
     numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns
     scaler = RobustScaler()
     df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
+    logger.info(f"Statistik deskriptif kolom numerik setelah scaling:\n{df[numeric_cols].describe()}")
     return df
 
 
@@ -167,7 +176,10 @@ def bin_numeric_features(df: pd.DataFrame) -> pd.DataFrame:
 @task(log_prints=True)
 def encode_features(df: pd.DataFrame) -> pd.DataFrame:
     """Mapping ordinal (month, education, binary yes/no) + one-hot encoding."""
+    logger = get_run_logger()
     df = df.copy()
+
+    logger.info(f"Kategori unik kolom 'education' sebelum mapping: {df['education'].unique().tolist()}")
 
     month_mapping = {
         "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,

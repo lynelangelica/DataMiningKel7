@@ -14,6 +14,14 @@ Ketergantungan (dependency):
     - Phase 2 (../Phase_2/output/): raw_data_with_clusters.csv (kolom 'cluster')
     - Phase 3 (../Phase_3/output/): association_rules_full.pkl
 
+    PENTING: seluruh task di Phase 4 ini (IQR/Z-Score, cluster_result,
+    cluster_summary, dst) mengasumsikan raw_data_with_clusters.csv berisi
+    kolom MENTAH ASLI (age, balance, duration, job, marital, housing, loan,
+    y, dst — belum di-scale/di-encode/di-rename), persis seperti yang dipakai
+    notebook Phase 4 aslinya. Karena itu Phase 2 (lihat pipeline_phase2.py)
+    sengaja memakai raw_data.csv (bukan bank_marketing_clean.csv) sebagai
+    sumber sebelum menempelkan kolom 'cluster'.
+
     Jika salah satu belum tersedia, pipeline ini akan menjalankan phase
     yang bersangkutan secara otomatis (Phase 1 -> Phase 2 -> Phase 3),
     sehingga Phase 4 selalu bisa dijalankan sendirian tanpa langkah manual.

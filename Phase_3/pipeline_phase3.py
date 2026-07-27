@@ -17,9 +17,14 @@ Cara menjalankan (dari dalam folder Phase_3):
 
 Output yang dihasilkan (folder ./output):
     - association_rules_full.pkl  -> seluruh association rules (pandas
-                                      DataFrame, disimpan sebagai pickle agar
-                                      kolom antecedents/consequents berupa
-                                      frozenset tetap utuh) — dipakai Phase 4
+                                    DataFrame, disimpan sebagai pickle agar
+                                    kolom antecedents/consequents berupa
+                                    frozenset tetap utuh) — dipakai Phase 4
+    - rules_sorted.csv            -> seluruh association rules dalam format
+                                    CSV (setara notebook cell terakhir,
+                                    frozenset otomatis jadi string saat
+                                    disimpan CSV — untuk pemakaian ulang
+                                    programatik pakai file .pkl di atas)
     - top_positive_rules.csv      -> top 10 rules menuju y_yes (nasabah setuju)
     - top_negative_rules.csv      -> top 10 rules menuju y_no  (nasabah tolak)
     - figures/*.png               -> scatter plot support vs confidence vs lift
@@ -219,6 +224,11 @@ def export_outputs(
     # Pickle -> mempertahankan tipe data frozenset di antecedents/consequents,
     # dibutuhkan Phase 4 untuk memanggil ulang display_clean_rules().
     rules_sorted.to_pickle(OUTPUT_DIR / "association_rules_full.pkl")
+
+    # CSV -> setara notebook cell terakhir (rules_sorted.to_csv("rules_sorted.csv")).
+    # frozenset di antecedents/consequents otomatis jadi representasi string
+    # saat disimpan CSV; untuk pemrosesan ulang programatik pakai file .pkl.
+    rules_sorted.to_csv(OUTPUT_DIR / "rules_sorted.csv", index=False)
 
     positive_rules.to_csv(OUTPUT_DIR / "top_positive_rules.csv", index=False)
     negative_rules.to_csv(OUTPUT_DIR / "top_negative_rules.csv", index=False)
